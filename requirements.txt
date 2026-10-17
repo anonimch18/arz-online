@@ -1,2 +1,2 @@
 disnake
-samp-query-parser
+samp-client
