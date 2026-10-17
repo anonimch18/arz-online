@@ -10,7 +10,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 API_URL = "https://api.arizona-five.com/launcher/servers"
 
-@bot.slash_command(description="Показать онлайн и очередь серверов Arizona RP и Vice City")
+@bot.slash_command(description="Показать онлайн и очередь серверов Arizona RP, Mobile и Vice City")
 async def online(inter: disnake.ApplicationCommandInteraction):
     await inter.response.defer()
 
@@ -20,7 +20,7 @@ async def online(inter: disnake.ApplicationCommandInteraction):
             async with session.get(API_URL, headers=headers, timeout=10) as resp:
                 text_data = await resp.text()
                 if resp.status != 200:
-                    await inter.edit_original_response(f"HTTP Ошибка: {resp.status}\nОтвет: {text_data[:200]}")
+                    await inter.edit_original_response(f"HTTP Ошибка: {resp.status}")
                     return
                 data = await resp.json()
     except Exception as e:
@@ -31,10 +31,11 @@ async def online(inter: disnake.ApplicationCommandInteraction):
         embed = disnake.Embed(title="📊 Онлайн серверов Arizona RP", color=disnake.Color.gold())
         
         lines_main = []
-        lines_extra = []
+        lines_mobile = []
+        lines_vc = []
         total_players = 0
 
-        # 1. Основные сервера
+        # 1. Основные ПК сервера (arizona)
         servers_list = data.get("arizona", [])
         servers_list = sorted(servers_list, key=lambda x: x.get("number", 0))
 
@@ -49,7 +50,22 @@ async def online(inter: disnake.ApplicationCommandInteraction):
             queue_str = f" `(Очередь: {queue})`" if queue > 0 else ""
             lines_main.append(f"**{name} ({number:02d})**: `{online_cnt}/{max_online}`{queue_str}")
 
-        # 2. Vice City (ключ "vc")
+        # 2. Мобильные сервера (arizonaMobile)
+        mobile_list = data.get("arizonaMobile", [])
+        mobile_list = sorted(mobile_list, key=lambda x: x.get("number", 0))
+
+        for srv in mobile_list:
+            number = srv.get("number", 0)
+            name = srv.get("name", f"Mobile {number}")
+            online_cnt = srv.get("online", 0)
+            max_online = srv.get("maxplayers", 1000)
+            queue = srv.get("queue", 0)
+
+            total_players += online_cnt
+            queue_str = f" `(Очередь: {queue})`" if queue > 0 else ""
+            lines_mobile.append(f"📱 **{name}**: `{online_cnt}/{max_online}`{queue_str}")
+
+        # 3. Vice City (vc)
         vc_list = data.get("vc", [])
         for srv in vc_list:
             name = srv.get("name", "Vice City")
@@ -59,8 +75,9 @@ async def online(inter: disnake.ApplicationCommandInteraction):
 
             total_players += online_cnt
             queue_str = f" `(Очередь: {queue})`" if queue > 0 else ""
-            lines_extra.append(f"🌴 **{name}**: `{online_cnt}/{max_online}`{queue_str}")
+            lines_vc.append(f"🌴 **{name}**: `{online_cnt}/{max_online}`{queue_str}")
 
+        # Раскладываем ПК-сервера на 2 колонки
         half = (len(lines_main) + 1) // 2
         col1 = lines_main[:half]
         col2 = lines_main[half:]
@@ -70,16 +87,20 @@ async def online(inter: disnake.ApplicationCommandInteraction):
         if col2:
             embed.add_field(name="Сервера (Часть 2)", value="\n".join(col2), inline=True)
         
-        if lines_extra:
-            embed.add_field(name="Специальные / Vice City", value="\n".join(lines_extra), inline=False)
+        # Добавляем блок с мобильными серверами
+        if lines_mobile:
+            embed.add_field(name="Мобильные сервера", value="\n".join(lines_mobile), inline=False)
+
+        # Добавляем Vice City отдельным блоком
+        if lines_vc:
+            embed.add_field(name="Важная зона / Vice City", value="\n".join(lines_vc), inline=False)
 
         embed.set_footer(text=f"Всего игроков на проекте: {total_players}")
         await inter.edit_original_response(embed=embed)
 
     except Exception as parse_err:
-        # Если код упадет при обработке JSON, бот пришлет точный трейсбэк ошибки
         err_text = traceback.format_exc()
-        await inter.edit_original_response(f"Ошибка парсинга кода:\n```py\n{err_text[-1500:]}\n```")
+        await inter.edit_original_response(f"Ошибка парсинга:\n```py\n{err_text[-1500:]}\n```")
 
 token = os.getenv("DISCORD_TOKEN")
 if token:
