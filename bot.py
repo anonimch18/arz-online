@@ -9,19 +9,20 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 API_URL = "https://api.arizona-five.com/launcher/servers"
 
-@bot.slash_command(description="Показать онлайн и очередь серверов Arizona RP")
+@bot.slash_command(description="Показать онлайн и очередь серверов Arizona RP и Vice City")
 async def online(inter: disnake.ApplicationCommandInteraction):
     await inter.response.defer()
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(API_URL, timeout=5) as resp:
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            async with session.get(API_URL, headers=headers, timeout=5) as resp:
                 if resp.status != 200:
-                    await inter.edit_original_response("Ошибка получения данных от API Arizona RP.")
+                    await inter.edit_original_response(f"Ошибка API: статус {resp.status}")
                     return
                 data = await resp.json()
     except Exception as e:
-        await inter.edit_original_response(f"Не удалось подключиться к API: {e}")
+        await inter.edit_original_response(f"Ошибка запроса: `{e}`")
         return
 
     embed = disnake.Embed(title="📊 Онлайн серверов Arizona RP", color=disnake.Color.gold())
@@ -30,10 +31,8 @@ async def online(inter: disnake.ApplicationCommandInteraction):
     lines_extra = []
     total_players = 0
 
-    # Берут массив из ключа "arizona", как в реальном ответе API
+    # 1. Собираем основные сервера из ключа "arizona"
     servers_list = data.get("arizona", [])
-
-    # Сортируем по номеру сервера, чтобы шли по порядку (01, 02, 03...)
     servers_list = sorted(servers_list, key=lambda x: x.get("number", 0))
 
     for srv in servers_list:
@@ -44,15 +43,22 @@ async def online(inter: disnake.ApplicationCommandInteraction):
         queue = srv.get("queue", 0)
 
         total_players += online_cnt
-
         queue_str = f" `(Очередь: {queue})`" if queue > 0 else ""
-        formatted_line = f"**{name} ({number:02d})**: `{online_cnt}/{max_online}`{queue_str}"
+        lines_main.append(f"**{name} ({number:02d})**: `{online_cnt}/{max_online}`{queue_str}")
 
-        if "Vice" in name or "VC" in name:
-            lines_extra.append(formatted_line)
-        else:
-            lines_main.append(formatted_line)
+    # 2. Достаем Vice City из ключа "vc"
+    vc_list = data.get("vc", [])
+    for srv in vc_list:
+        name = srv.get("name", "Vice City")
+        online_cnt = srv.get("online", 0)
+        max_online = srv.get("maxplayers", 750)
+        queue = srv.get("queue", 0)
 
+        total_players += online_cnt
+        queue_str = f" `(Очередь: {queue})`" if queue > 0 else ""
+        lines_extra.append(f"🌴 **{name}**: `{online_cnt}/{max_online}`{queue_str}")
+
+    # Разделяем основные сервера на две колонки
     half = (len(lines_main) + 1) // 2
     col1 = lines_main[:half]
     col2 = lines_main[half:]
@@ -61,6 +67,8 @@ async def online(inter: disnake.ApplicationCommandInteraction):
         embed.add_field(name="Сервера (Часть 1)", value="\n".join(col1), inline=True)
     if col2:
         embed.add_field(name="Сервера (Часть 2)", value="\n".join(col2), inline=True)
+    
+    # Выводим Vice City отдельным блоком внизу
     if lines_extra:
         embed.add_field(name="Специальные / Vice City", value="\n".join(lines_extra), inline=False)
 
