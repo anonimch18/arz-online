@@ -95,7 +95,7 @@ async def online(inter: disnake.ApplicationCommandInteraction):
         if lines_vc:
             embed.add_field(name="Vice City", value="\n".join(lines_vc), inline=False)
 
-        embed.add_field(name="👥 Общий онлайн проекта", value=f"### **{total_players}** игрока(-ов) в сети", inline=False)
+        embed.add_field(name="\u200b", value=f"👥 **Всего игроков на проекте: {total_players}**", inline=False)
         await inter.edit_original_response(embed=embed)
 
     except Exception as parse_err:
