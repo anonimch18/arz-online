@@ -1,7 +1,7 @@
 import os
 import disnake
 from disnake.ext import commands, tasks
-from samp_query_parser import SampClient
+from samp_client.client import SampClient
 
 bot = commands.Bot(command_prefix="!", intents=disnake.Intents.default())
 
