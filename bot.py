@@ -87,13 +87,13 @@ async def online(inter: disnake.ApplicationCommandInteraction):
         if col2:
             embed.add_field(name="Сервера (Часть 2)", value="\n".join(col2), inline=True)
         
-        # Добавляем блок с мобильными серверами
+        # Мобильные сервера
         if lines_mobile:
             embed.add_field(name="Мобильные сервера", value="\n".join(lines_mobile), inline=False)
 
-        # Добавляем Vice City отдельным блоком
+        # Блок Vice City
         if lines_vc:
-            embed.add_field(name="Важная зона / Vice City", value="\n".join(lines_vc), inline=False)
+            embed.add_field(name="Vice City", value="\n".join(lines_vc), inline=False)
 
         embed.set_footer(text=f"Всего игроков на проекте: {total_players}")
         await inter.edit_original_response(embed=embed)
