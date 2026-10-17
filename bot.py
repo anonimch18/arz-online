@@ -30,27 +30,29 @@ async def online(inter: disnake.ApplicationCommandInteraction):
     lines_extra = []
     total_players = 0
 
-    # Разбираем массив серверов из API
-    servers_list = data if isinstance(data, list) else data.get("servers", [])
+    # Берут массив из ключа "arizona", как в реальном ответе API
+    servers_list = data.get("arizona", [])
+
+    # Сортируем по номеру сервера, чтобы шли по порядку (01, 02, 03...)
+    servers_list = sorted(servers_list, key=lambda x: x.get("number", 0))
 
     for srv in servers_list:
-        name = srv.get("title") or srv.get("name") or "Неизвестный"
+        number = srv.get("number", "")
+        name = srv.get("name", "Неизвестный")
         online_cnt = srv.get("online", 0)
-        max_online = srv.get("maxOnline", 1000)
-        queue = srv.get("queue", srv.get("waitQueue", 0))
+        max_online = srv.get("maxplayers", 1000)
+        queue = srv.get("queue", 0)
 
         total_players += online_cnt
 
         queue_str = f" `(Очередь: {queue})`" if queue > 0 else ""
-        formatted_line = f"**{name}**: `{online_cnt}/{max_online}`{queue_str}"
+        formatted_line = f"**{name} ({number:02d})**: `{online_cnt}/{max_online}`{queue_str}"
 
-        # Отделяем Vice City или мобильные сервера от основных
         if "Vice" in name or "VC" in name:
             lines_extra.append(formatted_line)
         else:
             lines_main.append(formatted_line)
 
-    # Разбиваем список на 2 столбца
     half = (len(lines_main) + 1) // 2
     col1 = lines_main[:half]
     col2 = lines_main[half:]
